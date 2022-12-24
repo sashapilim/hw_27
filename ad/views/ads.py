@@ -17,6 +17,19 @@ class AdsView(ListView):
         super().get(request, *args, **kwargs)
         self.object_list = self.object_list.select_related('author').order_by(
             "-price")
+        cat = request.GET.getlist('cat')
+        if cat:
+            self.object_list = self.object_list.filter(category__in=cat)
+        text = request.GET.get('text')
+        if text:
+            self.object_list = self.object_list.filter(description__icontains=text)
+        loc = request.GET.get('location')
+        if loc:
+            self.object_list = self.object_list.filter(author__location__name__icontains=loc)
+        min = request.GET.get('price_from')
+        max = request.GET.get('price_to')
+        if min and max:
+            self.object_list = self.object_list.filter(price__range=(min, max))
         paginator = Paginator(self.object_list, 10)
         num_pages = request.GET.get('page')
         pat_obj = paginator.get_page(num_pages)
@@ -40,9 +53,6 @@ class AdsView(ListView):
         return JsonResponse(response, safe=False)
 
 
-
-
-
 @method_decorator(csrf_exempt, name='dispatch')
 class AdsViewDetail(DetailView):
     model = Ads
@@ -52,7 +62,7 @@ class AdsViewDetail(DetailView):
         self.object = self.get_object()
         return JsonResponse({'id': self.object.id,
                              'name': self.object.name,
-                             'author': self.object.author,
+                             'author': self.object.author.first_name,
                              'price': self.object.price,
                              'description': self.object.description,
                              'is_published': self.object.is_published}, safe=False)
@@ -85,6 +95,7 @@ class AdUpadeteView(UpdateView):
             "category_id": self.object.category_id,
             "image": self.object.image.url if self.object.image else None,
         })
+
 
 @method_decorator(csrf_exempt, name="dispatch")
 class AdDeleteView(DeleteView):
